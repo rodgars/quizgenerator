@@ -1,6 +1,8 @@
 # quizgenerator
 Javascript Quiz Generator powered by Openai API. It allows you to generate multiple-choice quizzes with the help of artificial intelligence. The generated quizzes can be used for educational purposes, training, or simply for fun.
 
+**This code MUST NOT be used on PROD environments. It's just a script created to validate the idea of a AI Generator Quiz.**
+
 ## Features
 
 - Multiple-Choice Questions: The quiz generator focuses on generating multiple-choice questions
