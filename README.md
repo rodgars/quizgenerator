@@ -6,7 +6,8 @@ Javascript Quiz Generator powered by Openai API. It allows you to generate multi
 ## Features
 
 - Multiple-Choice Questions: The quiz generator focuses on generating multiple-choice questions
-- Answer & Grading: You can answer the question, submit and check how many did you get right
+- Answer & Grading: You can answer the questions, submit them and check how many you got right
+- Feedback: after submitting the questions, it shows the correct answers for each question
 
 ## Getting Started
 
