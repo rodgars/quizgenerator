@@ -101,6 +101,15 @@
     function isInt(value) {
       return typeof value === 'number' && Number.isInteger(value)
     }
+    
+              // when the answer is "a" for an option like "a. that's my option"
+          if (isChar(correctAnswer))
+              question.answer = charToInt(correctAnswer)
+          // when the answer is a string match of the option
+          if (isString(correctAnswer))
+            question.answer = question.options.indexOf(correctAnswer)function isString(value) {
+      return typeof value === 'string' && value.length > 1;
+    }
 
     function isChar(value) {
       return typeof value === 'string' && value.length === 1;
@@ -220,11 +229,14 @@
       if (validateJSON(quizData, jsonTemplate)) {
         quizData.questions.forEach(question => {
           correctAnswer = question.answer
-          if (!isInt(correctAnswer)) 
+          
+          // when the answer is "a" for an option like "a. that's my option"
+          if (isChar(correctAnswer))
+              question.answer = charToInt(correctAnswer)
+          
+          // when the answer is a string match of the option
+          if (isString(correctAnswer))
             question.answer = question.options.indexOf(correctAnswer)
-          else if (isChar(correctAnswer)){
-            question.answer = charToInt(correctAnswer)
-          }
         })
         myQuiz = quizData.questions
         return myQuiz
