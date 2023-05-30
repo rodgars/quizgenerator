@@ -198,7 +198,6 @@
         text.setAttribute("text-anchor", "middle");
         text.setAttribute("fill", "#1e87f0");
         text.setAttribute("id", "loading-text")
-        text.textContent = "Loading Quiz";
 
         // Append the text element to the SVG element
         svg.appendChild(text);
@@ -213,9 +212,6 @@
         loadingContainer.id = "loading";
         loadingContainer.appendChild(loadingSvg);
         container.appendChild(loadingContainer);
-
-        const loadingText = document.getElementById("loading-text");
-        loadingText.textContent = "Loading Quiz"
     }
 
     // remove the loading gif from the UI
@@ -266,7 +262,7 @@
     /* **************************************************
     ************************************************** */
 
-    const OPENAI_API_KEY = "Your Key Here"
+    const OPENAI_API_KEY = "Your Key here"
     const OPENAI_URL = "https://api.openai.com/v1/chat/completions"
     const OPENAI_MODEL = "gpt-3.5-turbo"
     const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations"
@@ -280,66 +276,52 @@
       }
     }
 
+    const completionPayload = (content) => {
+        return {
+            model: OPENAI_MODEL,
+            messages: [{
+                "role": "user",
+                content
+            }]
+        }
+    }
+
     // return a payload to be used in openai api to return a prompt for image generation
     const generateImgPromptPayload = (text) => {
-      return {
-        model: OPENAI_MODEL,
-        messages: [{
-          "role": "user",
-          "content": `given the json template: {"prompt":""}, create a json file with a image generation prompt to the text "${text}". Use the main idea of the text by 10 words mixing nouns with adjectives to generate the prompt.`
-        }]
-      }
+        content = `given the json template: {"prompt":""}, create a json file with a image generation prompt to the text "${text}". Use the main idea of the text by 10 words mixing nouns with adjectives to generate the prompt.`
+        return completionPayload(content)
     }
 
     // return a payload to be used in openai api to generate a list of paragraphs for a content
     const generateContentPayload = (numMaxParagraphs, subject) => {
-      return {
-        model: OPENAI_MODEL,
-        messages: [{
-          "role": "user",
-          "content": `given the json template {"paragraphs": ['']} create a json explaining about ${subject}. This json must has up to ${numMaxParagraphs} paragraphs.`
-        }]
-      }
+        content = `given the json template {"paragraphs": ['']} create a json explaining about ${subject}. This json must has up to ${numMaxParagraphs} paragraphs.`
+        return completionPayload(content)
     }
 
     // return a payload to be used in openai api to generate questions
     const generateQuestionPayload = (numQuestions, numOptions, subject) => {
-      return {
-        model: OPENAI_MODEL,
-        messages: [{
-          "role": "user",
-          "content": `given the json template {questions: [{question: '',options: [''],answer:'' }]}, create a json with ${numQuestions} multiple choice questions with ${numOptions} options each asking about ${subject}`
-        }]
-      }
+        content = `given the json template {questions: [{question: '',options: [''],answer:'' }]}, create a json with ${numQuestions} multiple choice questions with ${numOptions} options each asking about ${subject}`
+        return completionPayload(content)
+    }
+
+    const postApi = async (url, apiKey, data) => {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify(data)
+      })
+
+      return await response.json()
     }
 
     // fetch Openai v1/chat/completions
-    const fetchChatCompletions = async (data) => {
-      const response = await fetch(OPENAI_URL, {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${OPENAI_API_KEY}`
-          },
-          body: JSON.stringify(data)
-      })
-
-      return await response.json()
-    }
+    const fetchChatCompletions = async (data) => await postApi(OPENAI_URL, OPENAI_API_KEY, data)
 
     // fetch Openai v1/images/generations
-    const fetchImageGeneration = async (data) => {
-        const response = await fetch(OPENAI_IMAGE_URL, {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${OPENAI_API_KEY}`
-          },
-          body: JSON.stringify(data)
-      })
-
-      return await response.json()
-    }
+    const fetchImageGeneration = async (data) => await postApi(OPENAI_IMAGE_URL, OPENAI_API_KEY, data)
 
     const parseImgUrl = (response) => {
         return response.data[0].url
