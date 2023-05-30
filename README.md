@@ -19,26 +19,11 @@ To use the Quiz Generator, follow the steps below:
 - Double-click on index.html to open it in a web browser.
 
 ---
-<img style="border: 5px solid black;" width="597" alt="1" src="https://github.com/rodgars/quizgenerator/assets/20528688/3e00893e-a090-430e-8bdb-4418cd120196">
-
-**Step 1.** Open the Quiz Generator
-
----
-<img width="593" style="border: 5px solid black;" alt="2" src="https://github.com/rodgars/quizgenerator/assets/20528688/c3dcfbc6-eadb-45a5-ae78-9737c9774bb1">
-
-**Step 2.**  Type the number of questions, number of options each question has and the subject of the quiz and click `Generate Quiz`
-
----
-<img width="590" alt="3" src="https://github.com/rodgars/quizgenerator/assets/20528688/3c27ceee-7a29-4c08-b6b6-ad1f7c8b5393">
 
 
-**Step 3.** Answer the questions
 
----
-<img width="625" alt="4" src="https://github.com/rodgars/quizgenerator/assets/20528688/dd5d7027-0bfd-4712-aced-f2a42f66ebaa">
+https://github.com/rodgars/quizgenerator/assets/20528688/1147dc8c-0bb9-4b5a-b0bd-808ca832e1f4
 
-
-**Step 4.** Click on `Submit Quiz` and check your score
 
 
 
