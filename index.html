@@ -57,17 +57,6 @@
     ************************************************** */
     const loadingSvg = createLoadingSvg();
 
-    // JSON structure expected to be returned from openai api
-    const jsonTemplate = {
-      questions: [
-        {
-          question: '',
-          options: [''],
-          answer: 0
-        }
-      ],
-    };
-
 
     /* UTILS FUNCTIONS */
     /* **************************************************
@@ -242,9 +231,11 @@
       }
     }
 
-    function updateResults(score, totalOfQuestions) {
-      const resultContainer = document.getElementById("result");
-      resultContainer.textContent = "Your Score: " + score + "/" + totalOfQuestions;
+    function updateResults(score) {
+        const quizData = getQuiz()
+        const totalOfQuestions = quizData.length
+        const resultContainer = document.getElementById("result");
+        resultContainer.textContent = "Your Score: " + score + "/" + totalOfQuestions;
     }
 
     function charToInt(char) {
@@ -257,15 +248,27 @@
     }
 
 
-
     /* OPENAI STUFF */
     /* **************************************************
     ************************************************** */
 
-    const OPENAI_API_KEY = "Your Key here"
+    const OPENAI_API_KEY = "Your API KEY here"
     const OPENAI_URL = "https://api.openai.com/v1/chat/completions"
     const OPENAI_MODEL = "gpt-3.5-turbo"
     const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations"
+
+    // JSON structure expected to be returned from openai api
+    const jsonTemplate = {
+      questions: [
+        {
+          question: '',
+          options: [{
+              option: '',
+              isCorrect: ''
+          }],
+        }
+      ],
+    };
 
     // return a payload to be used in openai api to generate a list of paragraphs for a content
     const generateImageGenerationPayload = (prompt) => {
@@ -288,7 +291,7 @@
 
     // return a payload to be used in openai api to return a prompt for image generation
     const generateImgPromptPayload = (text) => {
-        content = `given the json template: {"prompt":""}, create a json file with a image generation prompt to the text "${text}". Use the main idea of the text by 10 words mixing nouns with adjectives to generate the prompt.`
+        content = `create an image generation prompt based on the text "${text}". write the answer as a json as {"prompt":""} where prompt describes the main subject of the text and limited by 20 words`
         return completionPayload(content)
     }
 
@@ -300,7 +303,8 @@
 
     // return a payload to be used in openai api to generate questions
     const generateQuestionPayload = (numQuestions, numOptions, subject) => {
-        content = `given the json template {questions: [{question: '',options: [''],answer:'' }]}, create a json with ${numQuestions} multiple choice questions with ${numOptions} options each asking about ${subject}`
+        jsonTemplateToPrompt = JSON.stringify(jsonTemplate)
+        content = `create ${numQuestions} multiple choice questions with ${numOptions} options each asking about ${subject}. write the answer as a json as ${jsonTemplateToPrompt}`
         return completionPayload(content)
     }
 
@@ -341,26 +345,15 @@
     const parseQuestionResponseToJson = (response) => {
       const quizData = JSON.parse(response.choices[0].message.content)
 
-      // log the value for testing
+      // log the value of the quiz for testing
       console.log('QUIZ DATA', JSON.stringify(quizData))
 
       if (validateJSON(quizData, jsonTemplate)) {
-        quizData.questions.forEach(question => {
-          correctAnswer = question.answer
-
-          // when the answer is "a" for an option like "a. that's my option"
-          if (isChar(correctAnswer))
-              question.answer = charToInt(correctAnswer)
-
-          // when the answer is a string match of the option
-          if (isString(correctAnswer))
-            question.answer = question.options.indexOf(correctAnswer)
-        })
         myQuiz = quizData.questions
         return myQuiz
       }
 
-      throw new Error("JSON returned is not valid")
+      throw new Error("Question JSON response is not valid")
     }
 
 
@@ -426,7 +419,7 @@
         const optionInput = document.createElement("input");
         optionInput.setAttribute("type", "radio");
         optionInput.setAttribute("name", "question" + questionIndex);
-        optionInput.setAttribute("value", optionIndex);
+        optionInput.setAttribute("value", option);
 
         optionLabel.appendChild(optionInput);
         optionLabel.appendChild(document.createTextNode(" " + option));
@@ -453,8 +446,8 @@
             const listGroupItem = createEl("li", "list-group-item")
             listGroup.appendChild(listGroupItem)
 
-            const isCorrectAnswer = question.answer === optionIndex
-            optionLabel = createOption(option, optionIndex, index, isCorrectAnswer)
+            const isCorrectAnswer = JSON.parse(option.isCorrect)
+            optionLabel = createOption(option.option, optionIndex, index, isCorrectAnswer)
             listGroupItem.appendChild(optionLabel)
         })
 
@@ -576,33 +569,43 @@
             }
 
             stopLoading()
+        } else {
+            showError("All fields are required. Number of Options need to be higher than 1.")
         }
+    }
+
+    // get the correct answer list for a question based on its index
+    function getCorrectAnswers(questionIndex) {
+        const quizData = getQuiz()
+        return quizData[questionIndex].options
+            .filter(opt => JSON.parse(opt.isCorrect))
+            .map(opt => opt.option);
+    }
+
+    // Check if the checked option in options is correct
+    function isRadioOptionCorrect(options, questionIndex){
+        const correctAnswers = getCorrectAnswers(questionIndex)
+        for (let j = 0; j < options.length; j++) {
+          if (options[j].checked) {
+            if (correctAnswers.includes(options[j].value))
+                return true
+          }
+        }
+        return false
     }
 
     // Function to submit the quiz and calculate the score
     function submitQuiz() {
       let score = 0;
-      const quizData = getQuiz()
       const quizContainer = document.getElementById("quiz");
       const questionDivs = quizContainer.getElementsByClassName("question");
       for (let i = 0; i < questionDivs.length; i++) {
         const options = questionDivs[i].querySelectorAll("input[type=radio]");
-        let userAnswer = null;
-        let correctAnswer = quizData[i].answer;
-
-        for (let j = 0; j < options.length; j++) {
-          if (options[j].checked) {
-            userAnswer = parseInt(options[j].value);
-            break;
-          }
-        }
-
-        if (userAnswer === correctAnswer) {
-          score++;
-        }
+        if (isRadioOptionCorrect(options, i))
+            score++;
       }
 
-      updateResults(score, quizData.length)
+      updateResults(score)
       showAllBadges()
     }
 
