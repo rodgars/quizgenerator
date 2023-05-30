@@ -50,10 +50,24 @@
         </div>
     </div>
     <div id="quiz-container"></div>
-
-
-
   <script>
+
+    /* GLOBAL VARIABLES */
+    /* **************************************************
+    ************************************************** */
+    const loadingSvg = createLoadingSvg();
+
+    // JSON structure expected to be returned from openai api
+    const jsonTemplate = {
+      questions: [
+        {
+          question: '',
+          options: [''],
+          answer: 0
+        }
+      ],
+    };
+
 
     /* UTILS FUNCTIONS */
     /* **************************************************
@@ -101,7 +115,7 @@
     function isInt(value) {
       return typeof value === 'number' && Number.isInteger(value)
     }
-    
+
     function isString(value) {
       return typeof value === 'string' && value.length > 1;
     }
@@ -120,16 +134,88 @@
       return JSON.parse(localStorage.getItem('myQuiz'));
     }
 
-    // renders a loading gif to the UI
-    function startLoading() {
-      const loadingdiv = createEl("div", "loading")
-      loadingdiv.id = "loading"
-      const loadingImg = createEl("img")
-      loadingImg.src = "loading.gif"
-      loadingdiv.appendChild(loadingImg)
+    function createLoadingSvg() {
+        // Create the SVG element
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        svg.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+        svg.setAttribute("style", "margin: auto; background: #fff; display: block;");
+        svg.setAttribute("width", "250px");
+        svg.setAttribute("height", "100px");
+        svg.setAttribute("viewBox", "0 0 100 100");
+        svg.setAttribute("preserveAspectRatio", "xMidYMid");
 
-      const quizContainer = document.getElementById("quiz-container");
-      quizContainer.appendChild(loadingdiv)
+        // Create the robot body
+        const robotBody = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        robotBody.setAttribute("x", "33");
+        robotBody.setAttribute("y", "45");
+        robotBody.setAttribute("width", "34");
+        robotBody.setAttribute("height", "34");
+        robotBody.setAttribute("fill", "#1e87f0");
+
+        // Create the robot head
+        const robotHead = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        robotHead.setAttribute("x", "40");
+        robotHead.setAttribute("y", "26");
+        robotHead.setAttribute("width", "20");
+        robotHead.setAttribute("height", "20");
+        robotHead.setAttribute("fill", "#1e87f0");
+
+        // Create the first eye
+        const eye1 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        eye1.setAttribute("cx", "45");
+        eye1.setAttribute("cy", "32");
+        eye1.setAttribute("r", "2");
+        eye1.setAttribute("fill", "#fff");
+
+        // Create the second eye
+        const eye2 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        eye2.setAttribute("cx", "55");
+        eye2.setAttribute("cy", "32");
+        eye2.setAttribute("r", "2");
+        eye2.setAttribute("fill", "#fff");
+
+        // Create the animation for the robot's body
+        const animateBody = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+        animateBody.setAttribute("attributeName", "fill-opacity");
+        animateBody.setAttribute("begin", "0s");
+        animateBody.setAttribute("dur", "1.2s");
+        animateBody.setAttribute("values", "1;.2;1");
+        animateBody.setAttribute("calcMode", "linear");
+        animateBody.setAttribute("repeatCount", "indefinite");
+
+        // Append the elements to the SVG element
+        svg.appendChild(robotBody);
+        svg.appendChild(robotHead);
+        svg.appendChild(eye1);
+        svg.appendChild(eye2);
+        svg.appendChild(animateBody);
+
+        // Create the text element
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", "50");
+        text.setAttribute("y", "95");
+        text.setAttribute("text-anchor", "middle");
+        text.setAttribute("fill", "#1e87f0");
+        text.setAttribute("id", "loading-text")
+        text.textContent = "Loading Quiz";
+
+        // Append the text element to the SVG element
+        svg.appendChild(text);
+
+        return svg
+    }
+
+    // renders a loading svg to the UI
+    function startLoading() {
+        const container = document.getElementById("quiz-container");
+        const loadingContainer = createEl("div");
+        loadingContainer.id = "loading";
+        loadingContainer.appendChild(loadingSvg);
+        container.appendChild(loadingContainer);
+
+        const loadingText = document.getElementById("loading-text");
+        loadingText.textContent = "Loading Quiz"
     }
 
     // remove the loading gif from the UI
@@ -138,13 +224,18 @@
       el.remove();
     }
 
+    function updateLoadingText(text){
+        const loadingText = document.getElementById("loading-text");
+        loadingText.textContent = text
+    }
+
     // renders a alert with an error message in the UI
     function showError(err) {
       const errDiv = createEl("div", "alert alert-danger")
       errDiv.innerText = err
 
       const quizContainer = document.getElementById("quiz-container");
-      quizContainer.appendChild(errDiv)     
+      quizContainer.appendChild(errDiv)
     }
 
     function showAllBadges() {
@@ -171,28 +262,50 @@
 
 
 
-    /* ONPEAN AI */
+    /* OPENAI STUFF */
     /* **************************************************
     ************************************************** */
 
-    const OPENAI_API_KEY = "you key here"
-    const OPEN_AI_URL = "https://api.openai.com/v1/chat/completions"
+    const OPENAI_API_KEY = "Your Key Here"
+    const OPENAI_URL = "https://api.openai.com/v1/chat/completions"
+    const OPENAI_MODEL = "gpt-3.5-turbo"
+    const OPENAI_IMAGE_URL = "https://api.openai.com/v1/images/generations"
 
-    // JSON structure expected to be returned from openai api
-    const jsonTemplate = {
-      questions: [
-        {
-          question: '',
-          options: [''],
-          answer: 0
-        }
-      ],
-    };
-
-    // return a payload to be used in openai api
-    const generatePayloadToApi = (numQuestions, numOptions, subject) => {
+    // return a payload to be used in openai api to generate a list of paragraphs for a content
+    const generateImageGenerationPayload = (prompt) => {
       return {
-        model: "gpt-3.5-turbo",
+        "prompt": `${prompt}. Do not include any text in the image. Cartoon style`,
+        "n": 1,
+        "size": "256x256"
+      }
+    }
+
+    // return a payload to be used in openai api to return a prompt for image generation
+    const generateImgPromptPayload = (text) => {
+      return {
+        model: OPENAI_MODEL,
+        messages: [{
+          "role": "user",
+          "content": `given the json template: {"prompt":""}, create a json file with a image generation prompt to the text "${text}". Use the main idea of the text by 10 words mixing nouns with adjectives to generate the prompt.`
+        }]
+      }
+    }
+
+    // return a payload to be used in openai api to generate a list of paragraphs for a content
+    const generateContentPayload = (numMaxParagraphs, subject) => {
+      return {
+        model: OPENAI_MODEL,
+        messages: [{
+          "role": "user",
+          "content": `given the json template {"paragraphs": ['']} create a json explaining about ${subject}. This json must has up to ${numMaxParagraphs} paragraphs.`
+        }]
+      }
+    }
+
+    // return a payload to be used in openai api to generate questions
+    const generateQuestionPayload = (numQuestions, numOptions, subject) => {
+      return {
+        model: OPENAI_MODEL,
         messages: [{
           "role": "user",
           "content": `given the json template {questions: [{question: '',options: [''],answer:'' }]}, create a json with ${numQuestions} multiple choice questions with ${numOptions} options each asking about ${subject}`
@@ -202,7 +315,7 @@
 
     // fetch Openai v1/chat/completions
     const fetchChatCompletions = async (data) => {
-      const response = await fetch(OPEN_AI_URL, {
+      const response = await fetch(OPENAI_URL, {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
@@ -214,8 +327,36 @@
       return await response.json()
     }
 
+    // fetch Openai v1/images/generations
+    const fetchImageGeneration = async (data) => {
+        const response = await fetch(OPENAI_IMAGE_URL, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`
+          },
+          body: JSON.stringify(data)
+      })
+
+      return await response.json()
+    }
+
+    const parseImgUrl = (response) => {
+        return response.data[0].url
+    }
+
+    const parseImgPrompt = (response) => {
+        const data = JSON.parse(response.choices[0].message.content)
+        return data.prompt
+    }
+
+    const parseParagraphsToArray = (response) => {
+        const data = JSON.parse(response.choices[0].message.content)
+        return data.paragraphs
+    }
+
     // extract and parse openai response
-    const parseOpenaiResponseToJson = (response) => {
+    const parseQuestionResponseToJson = (response) => {
       const quizData = JSON.parse(response.choices[0].message.content)
 
       // log the value for testing
@@ -224,11 +365,11 @@
       if (validateJSON(quizData, jsonTemplate)) {
         quizData.questions.forEach(question => {
           correctAnswer = question.answer
-          
+
           // when the answer is "a" for an option like "a. that's my option"
           if (isChar(correctAnswer))
               question.answer = charToInt(correctAnswer)
-          
+
           // when the answer is a string match of the option
           if (isString(correctAnswer))
             question.answer = question.options.indexOf(correctAnswer)
@@ -289,7 +430,7 @@
       return rowDiv1
     }
 
-    // creates the question card header 
+    // creates the question card header
     const createCardHeader = (question, index) => {
         const cardHeader = createEl("div", "card-header")
         cardHeader.innerText = `${index + 1}. ${question.question}`
@@ -340,13 +481,42 @@
         return cardDiv
     }
 
+    const createParagraph = (paragraph, imageUrl) => {
+        const rowDiv = createEl("div", "row")
+        const colDiv = createEl("div", "col-md-10 offset-md-1")
+        rowDiv.appendChild(colDiv)
+
+       // Create the container element
+        const container = document.createElement("div");
+        container.style.display = "flex";
+        container.style.alignItems = "center";
+        container.style.justifyContent = "flex-end";
+
+        // Create the <p> element
+        const paragraphEl = document.createElement("p");
+        paragraphEl.textContent = paragraph;
+
+        // Create the <img> element
+        const image = document.createElement("img");
+        image.src = imageUrl;
+        image.style.marginLeft = "10px"; // Add some spacing between the paragraph and the image
+
+        // Append the elements to the container
+        container.appendChild(paragraphEl);
+        container.appendChild(image);
+
+        colDiv.appendChild(container)
+
+        return rowDiv
+    }
+
 
     /* RENDERING FUNCTIONS */
     /* **************************************************
     ************************************************** */
 
     // Function to render the quiz with all questions
-    function renderQuiz(quizData) {
+    function renderQuiz(quizData, paragraphsElements) {
       const quizContainer = document.getElementById("quiz-container");
       const rowDiv = createEl("div", "row")
       const colDiv = createEl("div", "col-md-10 offset-md-1")
@@ -354,6 +524,10 @@
       const quiz = createEl("div")
       quiz.id = "quiz"
       colDiv.appendChild(quiz)
+
+      for (let i=0; i < paragraphsElements.length; i++){
+        quizContainer.appendChild(paragraphsElements[i])
+      }
 
       quizContainer.appendChild(rowDiv)
       const submitQuizDiv = createSubmitQuizFooter()
@@ -380,20 +554,46 @@
 
         if (numQuestions > 0 && numOptions > 1 && subject){
 
-          startLoading()
-          const data = generatePayloadToApi(numQuestions, numOptions, subject)
+            startLoading()
 
-          try {
-              const response = await fetchChatCompletions(data)
-              const myQuiz = parseOpenaiResponseToJson(response)
-              setQuiz(myQuiz)
-              renderQuiz(myQuiz)
-              stopLoading()
+            try {
 
-          } catch (error) {
+                // Fetch list of paragraps for the content
+                updateLoadingText("Creating Paragraphs...")
+                contentParagraphsData = generateContentPayload(2, subject)
+                contentParagraphsResponse = await fetchChatCompletions(contentParagraphsData)
+                paragraphs = parseParagraphsToArray(contentParagraphsResponse)
+
+                paragraphsElements = []
+                updateLoadingText("Creating Images...")
+                for(const paragraph of paragraphs){
+                    // Fetch the image prompt
+                    imgPromptData = generateImgPromptPayload(paragraph)
+                    imgPromptResponse = await fetchChatCompletions(imgPromptData)
+                    imgPrompt = parseImgPrompt(imgPromptResponse)
+                    // log prompt for test
+                    console.log("Img prompt", imgPrompt)
+
+                    // Fetch the image url
+                    imgUrlData = generateImageGenerationPayload(imgPrompt)
+                    imgUrlResponse = await fetchImageGeneration(imgUrlData)
+                    imgUrl = parseImgUrl(imgUrlResponse)
+
+                    paragraphsElements.push(createParagraph(paragraph, imgUrl))
+                }
+
+                updateLoadingText("Creating Questions...")
+                const questionsData = generateQuestionPayload(numQuestions, numOptions, subject)
+                const questionsResponse = await fetchChatCompletions(questionsData)
+                const myQuiz = parseQuestionResponseToJson(questionsResponse)
+                setQuiz(myQuiz)
+                renderQuiz(myQuiz, paragraphsElements)
+
+            } catch (error) {
+                showError(error)
+            }
+
             stopLoading()
-            showError(error)
-          }
         }
     }
 
@@ -423,7 +623,7 @@
       updateResults(score, quizData.length)
       showAllBadges()
     }
-    
+
   </script>
 </body>
 </html>
